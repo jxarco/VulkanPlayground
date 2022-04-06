@@ -6,12 +6,7 @@
 
 class VulkanApp {
 public:
-    void run() {
-        initWindow();
-        initVulkan();
-        mainLoop();
-        cleanup();
-    }
+    void run();
 
 private:
 
@@ -31,17 +26,18 @@ private:
     };
 
     void initWindow();
+    void initVulkan();
+    void mainLoop();
+    void cleanup();
+
     void createInstance();
     void enumerateExtensions();
     std::vector<const char*> getRequiredExtensions();
     bool checkValidationLayerSupport();
-    void initVulkan();
     void createLogicalDevice();
     void pickPhysicalDevice();
     bool isDeviceSuitable(VkPhysicalDevice device);
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
     void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
     void setupDebugMessenger();
-    void mainLoop();
-    void cleanup();
 };

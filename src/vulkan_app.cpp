@@ -33,6 +33,26 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
     }
 }
 
+static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT messageType,
+    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+    void* pUserData) {
+
+    if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+        std::cerr << "VL: " << pCallbackData->pMessage << std::endl;
+    }
+
+    return VK_FALSE;
+}
+
+void VulkanApp::run() {
+    initWindow();
+    initVulkan();
+    mainLoop();
+    cleanup();
+}
+
 void VulkanApp::initWindow() {
     glfwInit();
 
@@ -40,6 +60,33 @@ void VulkanApp::initWindow() {
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+}
+
+void VulkanApp::initVulkan() {
+    createInstance();
+    setupDebugMessenger();
+    pickPhysicalDevice();
+    createLogicalDevice();
+}
+
+void VulkanApp::mainLoop() {
+    while (!glfwWindowShouldClose(window)) {
+        glfwPollEvents();
+    }
+}
+
+void VulkanApp::cleanup() {
+    vkDestroyDevice(device, nullptr);
+
+    if (enableValidationLayers) {
+        DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+    }
+
+    vkDestroyInstance(instance, nullptr);
+
+    glfwDestroyWindow(window);
+
+    glfwTerminate();
 }
 
 void VulkanApp::createInstance() {
@@ -83,19 +130,6 @@ void VulkanApp::createInstance() {
     }
 
     //enumerateExtensions();
-}
-
-static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-    VkDebugUtilsMessageTypeFlagsEXT messageType,
-    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-    void* pUserData) {
-
-    if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
-        std::cerr << "VL: " << pCallbackData->pMessage << std::endl;
-    }
-
-    return VK_FALSE;
 }
 
 void VulkanApp::enumerateExtensions() {
@@ -149,13 +183,6 @@ bool VulkanApp::checkValidationLayerSupport() {
     }
 
     return true;
-}
-
-void VulkanApp::initVulkan() {
-    createInstance();
-    setupDebugMessenger();
-    pickPhysicalDevice();
-    createLogicalDevice();
 }
 
 void VulkanApp::createLogicalDevice() {
@@ -272,24 +299,4 @@ void VulkanApp::setupDebugMessenger() {
     if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
         throw std::runtime_error("failed to set up debug messenger!");
     }
-}
-
-void VulkanApp::mainLoop() {
-    while (!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
-    }
-}
-
-void VulkanApp::cleanup() {
-    vkDestroyDevice(device, nullptr);
-
-    if (enableValidationLayers) {
-        DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-    }
-
-    vkDestroyInstance(instance, nullptr);
-
-    glfwDestroyWindow(window);
-
-    glfwTerminate();
 }
