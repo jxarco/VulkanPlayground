@@ -4,6 +4,7 @@
 #include <stdexcept>
 
 int main() {
+
     VulkanApp app;
 
     try {
