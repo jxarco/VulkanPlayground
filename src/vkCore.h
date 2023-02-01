@@ -45,6 +45,9 @@ private:
     VkExtent2D swapChainExtent;
     std::vector<VkImageView> swapChainImageViews;
 
+    VkRenderPass renderPass;
+    VkPipelineLayout pipelineLayout;
+
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkDevice device; // Logical Device
 
@@ -73,6 +76,7 @@ private:
     void createImageViews();
 
     // Graphics Pipeline
+    void createRenderPass();
     void createGraphicsPipeline();
     VkShaderModule createShaderModule(const std::vector<char>& code);
 
