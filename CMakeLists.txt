@@ -8,7 +8,7 @@ set(VK_DIR_SOURCES    "${VK_DIR_ROOT}/src")
 project(VulkanApp CXX)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "build")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "")
 
 # Sources
 macro(VK_FILES_APPEND)
@@ -41,3 +41,5 @@ target_link_libraries(${PROJECT_NAME} glfw)
 # glm
 add_subdirectory(libraries/glm EXCLUDE_FROM_ALL)
 target_link_libraries(${PROJECT_NAME} glm)
+
+add_compile_definitions(NOMINMAX)

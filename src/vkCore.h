@@ -9,6 +9,7 @@
 #include <iostream>
 #include <vector>
 #include <optional>
+#include <fstream>
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
@@ -69,8 +70,11 @@ private:
     VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
     VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
     void createSwapChain();
-
     void createImageViews();
+
+    // Graphics Pipeline
+    void createGraphicsPipeline();
+    VkShaderModule createShaderModule(const std::vector<char>& code);
 
     // Physical and Logical Devices
     void pickPhysicalDevice();
@@ -84,7 +88,6 @@ private:
     void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
 
     // Debug Utils
-
     VkDebugUtilsMessengerEXT debugMessenger;
 
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
@@ -98,5 +101,24 @@ private:
         }
 
         return VK_FALSE;
+    }
+
+    static std::vector<char> readFile(const std::string& filename) {
+
+        std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+        if (!file.is_open()) {
+            throw std::runtime_error("Failed to open " + filename + "!");
+        }
+
+        size_t fileSize = (size_t)file.tellg();
+        std::vector<char> buffer(fileSize);
+
+        file.seekg(0);
+        file.read(buffer.data(), fileSize);
+
+        file.close();
+
+        return buffer;
     }
 };
