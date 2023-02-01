@@ -1,11 +1,11 @@
-#include "vulkan_app.h"
+#include "vkCore.h"
 
 #include <iostream>
 #include <stdexcept>
 
 int main() {
 
-    VulkanApp app;
+    VkCore app;
 
     try {
         app.run();
