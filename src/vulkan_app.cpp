@@ -1,7 +1,7 @@
 #include "vulkan_app.h"
 
-#include <iostream>
 #include <stdexcept>
+#include <set>
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -32,24 +32,14 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
     }
 }
 
-static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-    VkDebugUtilsMessageTypeFlagsEXT messageType,
-    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-    void* pUserData) {
-
-    if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
-        std::cerr << "VL: " << pCallbackData->pMessage << std::endl;
-    }
-
-    return VK_FALSE;
-}
-
 void VulkanApp::run()
 {
     initWindow();
+
     initVulkan();
+
     mainLoop();
+
     cleanup();
 }
 
@@ -70,6 +60,19 @@ void VulkanApp::mainLoop()
     }
 }
 
+void VulkanApp::initVulkan()
+{
+    createInstance();
+
+    setupDebugMessenger();
+
+    createSurface();
+
+    pickPhysicalDevice();
+
+    createLogicalDevice();
+}
+
 void VulkanApp::cleanup()
 {
     vkDestroyDevice(device, nullptr);
@@ -78,19 +81,13 @@ void VulkanApp::cleanup()
         DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
     }
 
+    vkDestroySurfaceKHR(instance, surface, nullptr);
+
     vkDestroyInstance(instance, nullptr);
 
     glfwDestroyWindow(window);
 
     glfwTerminate();
-}
-
-void VulkanApp::initVulkan()
-{
-    createInstance();
-    setupDebugMessenger();
-    pickPhysicalDevice();
-    createLogicalDevice();
 }
 
 void VulkanApp::createInstance()
@@ -105,7 +102,7 @@ void VulkanApp::createInstance()
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.pEngineName = "No Engine";
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.apiVersion = VK_API_VERSION_1_0;
+    appInfo.apiVersion = VK_API_VERSION_1_1;
 
     VkInstanceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -189,6 +186,13 @@ bool VulkanApp::checkValidationLayerSupport()
     return true;
 }
 
+void VulkanApp::createSurface()
+{
+    if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create window surface!");
+    }
+}
+
 void VulkanApp::pickPhysicalDevice()
 {
     uint32_t deviceCount = 0;
@@ -215,13 +219,15 @@ void VulkanApp::pickPhysicalDevice()
 
 bool VulkanApp::isDeviceSuitable(VkPhysicalDevice device) {
 
-    /*VkPhysicalDeviceProperties deviceProperties;
+    /*
+    VkPhysicalDeviceProperties deviceProperties;
     vkGetPhysicalDeviceProperties(device, &deviceProperties);
 
     VkPhysicalDeviceFeatures deviceFeatures;
     vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
 
-    return deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.geometryShader;*/
+    return deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.geometryShader;
+    */
 
     QueueFamilyIndices indices = findQueueFamilies(device);
     return indices.isComplete();
@@ -238,9 +244,19 @@ QueueFamilyIndices VulkanApp::findQueueFamilies(VkPhysicalDevice device)
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 
     int i = 0;
+
+    // It's preferrable to pick a physical device that supports drawing and presentation in the same queue for improved performance
+
     for (const auto& queueFamily : queueFamilies) {
         if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
             indices.graphicsFamily = i;
+        }
+
+        VkBool32 presentSupport = false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+
+        if (presentSupport) {
+            indices.presentFamily = i;
         }
 
         if (indices.isComplete()) {
@@ -256,14 +272,19 @@ QueueFamilyIndices VulkanApp::findQueueFamilies(VkPhysicalDevice device)
 void VulkanApp::createLogicalDevice()
 {
     QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
-
-    VkDeviceQueueCreateInfo queueCreateInfo{};
-    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    queueCreateInfo.queueFamilyIndex = indices.graphicsFamily.value();
-    queueCreateInfo.queueCount = 1;
+    
+    std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+    std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
     float queuePriority = 1.0f;
-    queueCreateInfo.pQueuePriorities = &queuePriority;
+    for (uint32_t queueFamily : uniqueQueueFamilies) {
+        VkDeviceQueueCreateInfo queueCreateInfo{};
+        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfo.queueFamilyIndex = queueFamily;
+        queueCreateInfo.queueCount = 1;
+        queueCreateInfo.pQueuePriorities = &queuePriority;
+        queueCreateInfos.push_back(queueCreateInfo);
+    }
 
     VkPhysicalDeviceFeatures deviceFeatures{};
     // Add here features of the device
@@ -271,8 +292,8 @@ void VulkanApp::createLogicalDevice()
 
     VkDeviceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    createInfo.pQueueCreateInfos = &queueCreateInfo;
-    createInfo.queueCreateInfoCount = 1;
+    createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());;
+    createInfo.pQueueCreateInfos = queueCreateInfos.data();
     createInfo.pEnabledFeatures = &deviceFeatures;
     createInfo.enabledExtensionCount = 0;
 
@@ -284,10 +305,12 @@ void VulkanApp::createLogicalDevice()
     }
 
     if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create logical device!");
+        throw std::runtime_error("Failed to create logical device!");
     }
 
+    // If the queue families are the same, then we only need to pass its index once...
     vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+    vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 }
 
 void VulkanApp::setupDebugMessenger()
@@ -298,7 +321,7 @@ void VulkanApp::setupDebugMessenger()
     populateDebugMessengerCreateInfo(createInfo);
 
     if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
-        throw std::runtime_error("failed to set up debug messenger!");
+        throw std::runtime_error("Failed to set up debug messenger!");
     }
 }
 
