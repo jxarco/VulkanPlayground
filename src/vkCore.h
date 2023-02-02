@@ -44,15 +44,19 @@ private:
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
     std::vector<VkImageView> swapChainImageViews;
+    std::vector<VkFramebuffer> swapChainFramebuffers;
 
     VkRenderPass renderPass;
     VkPipelineLayout pipelineLayout;
+    VkPipeline graphicsPipeline;
 
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkDevice device; // Logical Device
 
     VkQueue graphicsQueue;
     VkQueue presentQueue;
+    VkCommandPool commandPool;
+    VkCommandBuffer commandBuffer;
 
     void initWindow();
     void initVulkan();
@@ -66,7 +70,7 @@ private:
     bool checkDeviceExtensionSupport(VkPhysicalDevice device);
     bool checkValidationLayerSupport();
 
-    // Window surface
+    // Window surface, SwapChain and Framebuffers
     void createSurface();
     SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
@@ -74,6 +78,7 @@ private:
     VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
     void createSwapChain();
     void createImageViews();
+    void createFramebuffers();
 
     // Graphics Pipeline
     void createRenderPass();
@@ -87,6 +92,9 @@ private:
 
     // Commands and Queues
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
+    void createCommandPool();
+    void createCommandBuffer();
+    void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
     void setupDebugMessenger();
     void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
