@@ -58,9 +58,15 @@ private:
     VkCommandPool commandPool;
     VkCommandBuffer commandBuffer;
 
+    // Synchronization
+    VkSemaphore imageAvailableSemaphore;
+    VkSemaphore renderFinishedSemaphore;
+    VkFence inFlightFence;
+
     void initWindow();
     void initVulkan();
     void mainLoop();
+    void drawFrame();
     void cleanup();
 
     // VkInstance, Extensions and Validation Layers
@@ -79,6 +85,9 @@ private:
     void createSwapChain();
     void createImageViews();
     void createFramebuffers();
+
+    // Synchronization
+    void createSyncObjects();
 
     // Graphics Pipeline
     void createRenderPass();
