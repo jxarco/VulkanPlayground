@@ -56,12 +56,14 @@ private:
     VkQueue graphicsQueue;
     VkQueue presentQueue;
     VkCommandPool commandPool;
-    VkCommandBuffer commandBuffer;
+    std::vector<VkCommandBuffer> commandBuffers;
 
     // Synchronization
-    VkSemaphore imageAvailableSemaphore;
-    VkSemaphore renderFinishedSemaphore;
-    VkFence inFlightFence;
+    std::vector <VkSemaphore> imageAvailableSemaphores;
+    std::vector <VkSemaphore> renderFinishedSemaphores;
+    std::vector <VkFence> inFlightFences;
+
+    bool framebufferResized = false;
 
     void initWindow();
     void initVulkan();
@@ -82,7 +84,11 @@ private:
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
     VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
     VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
-    void createSwapChain();
+
+    void createSwapChain(VkSwapchainKHR* oldSwapChain = nullptr);
+    void recreateSwapChain();
+    void cleanupSwapChain(bool forceClean = true);
+
     void createImageViews();
     void createFramebuffers();
 
@@ -105,10 +111,16 @@ private:
     void createCommandBuffer();
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
+    static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
+        auto app = reinterpret_cast<VkCore*>(glfwGetWindowUserPointer(window));
+        app->framebufferResized = true;
+    }
+
+    // Debug Utils
+
     void setupDebugMessenger();
     void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
 
-    // Debug Utils
     VkDebugUtilsMessengerEXT debugMessenger;
 
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
