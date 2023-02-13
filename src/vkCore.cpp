@@ -175,7 +175,7 @@ void VkCore::initVulkan()
     createSyncObjects();
 }
 
-void VkCore::cleanupSwapChain(bool forceClean)
+void VkCore::cleanupSwapChain(bool skip)
 {
     for (auto framebuffer : swapChainFramebuffers) {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
@@ -185,7 +185,7 @@ void VkCore::cleanupSwapChain(bool forceClean)
         vkDestroyImageView(device, imageView, nullptr);
     }
 
-    if(forceClean)
+    if(!skip)
         vkDestroySwapchainKHR(device, swapChain, nullptr);
 }
 
@@ -593,7 +593,7 @@ VkExtent2D VkCore::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities
     }
 }
 
-void VkCore::createSwapChain(VkSwapchainKHR* oldSwapChain)
+void VkCore::createSwapChain(bool useOld)
 {
     SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
 
@@ -639,14 +639,22 @@ void VkCore::createSwapChain(VkSwapchainKHR* oldSwapChain)
     createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     createInfo.presentMode = presentMode;
     createInfo.clipped = VK_TRUE;
-    createInfo.oldSwapchain = oldSwapChain ? *oldSwapChain : VK_NULL_HANDLE;
+    createInfo.oldSwapchain = VK_NULL_HANDLE;
+
+    VkSwapchainKHR old;
+
+    if (useOld) {
+        old = swapChain;
+        createInfo.oldSwapchain = old;
+    }
 
     if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create swap chain!");
     }
 
-    if(oldSwapChain)
-        vkDestroySwapchainKHR(device, *oldSwapChain, nullptr);
+    if (useOld) {
+        vkDestroySwapchainKHR(device, old, nullptr);
+    }
 
     vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
     swapChainImages.resize(imageCount);
@@ -668,9 +676,9 @@ void VkCore::recreateSwapChain()
 
     vkDeviceWaitIdle(device);
 
-    cleanupSwapChain();
+    cleanupSwapChain(true);
 
-    createSwapChain(  );
+    createSwapChain( &swapChain );
     createImageViews();
     createFramebuffers();
 }
