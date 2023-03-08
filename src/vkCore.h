@@ -83,8 +83,11 @@ private:
     VkDeviceMemory vertexBufferMemory;
     VkBuffer indexBuffer;
     VkDeviceMemory indexBufferMemory;
+
     VkImage textureImage;
     VkDeviceMemory textureImageMemory;
+    VkImageView textureImageView;
+    VkSampler textureSampler;
 
     std::vector<VkBuffer> uniformBuffers;
     std::vector<VkDeviceMemory> uniformBuffersMemory;
@@ -133,6 +136,7 @@ private:
     void recreateSwapChain();
     void cleanupSwapChain(bool skip = false);
 
+    VkImageView createImageView(VkImage image, VkFormat format);
     void createImageViews();
     void createFramebuffers();
 
@@ -169,6 +173,10 @@ private:
     void createTextureImage();
     void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
     void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+    void createTextureImageView();
+
+    // Samplers
+    void createTextureSampler();
 
     // Commands and Queues
     void createCommandPool();
