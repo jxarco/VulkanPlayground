@@ -18,6 +18,10 @@ struct Vertex {
     glm::vec3 color;
     glm::vec2 texCoord;
 
+    bool operator==(const Vertex& other) const {
+        return pos == other.pos && color == other.color && texCoord == other.texCoord;
+    }
+
     static VkVertexInputBindingDescription getBindingDescription() {
         VkVertexInputBindingDescription bindingDescription{};
         bindingDescription.binding = 0;
@@ -83,6 +87,9 @@ private:
     VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
+
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
 
     VkBuffer vertexBuffer;
     VkDeviceMemory vertexBufferMemory;
@@ -163,6 +170,14 @@ private:
     bool isDeviceSuitable(VkPhysicalDevice device);
     void createLogicalDevice();
 
+    // Commands and Queues
+    void createCommandPool();
+    void createCommandBuffer();
+    void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+    VkCommandBuffer beginSingleTimeCommands();
+    void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
+
     // Buffers
     void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
     void createVertexBuffer();
@@ -191,13 +206,8 @@ private:
     void createDepthResources();
     bool hasStencilComponent(VkFormat format) { return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT; }
 
-    // Commands and Queues
-    void createCommandPool();
-    void createCommandBuffer();
-    void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
-    VkCommandBuffer beginSingleTimeCommands();
-    void endSingleTimeCommands(VkCommandBuffer commandBuffer);
-    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
+    // Models
+    void loadModel();
 
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
         auto app = reinterpret_cast<VkCore*>(glfwGetWindowUserPointer(window));
