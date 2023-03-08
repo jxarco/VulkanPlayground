@@ -75,17 +75,28 @@ private:
     std::vector<VkFramebuffer> swapChainFramebuffers;
 
     VkRenderPass renderPass;
+    VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
 
     VkBuffer vertexBuffer;
     VkDeviceMemory vertexBufferMemory;
+    VkBuffer indexBuffer;
+    VkDeviceMemory indexBufferMemory;
+
+    std::vector<VkBuffer> uniformBuffers;
+    std::vector<VkDeviceMemory> uniformBuffersMemory;
+    std::vector<void*> uniformBuffersMapped;
+
+    VkDescriptorPool descriptorPool;
+    std::vector<VkDescriptorSet> descriptorSets;
 
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkDevice device; // Logical Device
 
     VkQueue graphicsQueue;
     VkQueue presentQueue;
+
     VkCommandPool commandPool;
     std::vector<VkCommandBuffer> commandBuffers;
 
@@ -128,6 +139,7 @@ private:
 
     // Graphics Pipeline
     void createRenderPass();
+    void createDescriptorSetLayout();
     void createGraphicsPipeline();
     VkShaderModule createShaderModule(const std::vector<char>& code);
 
@@ -137,8 +149,17 @@ private:
     void createLogicalDevice();
 
     // Buffers
+    void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
     void createVertexBuffer();
+    void createIndexBuffer();
+    void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+
+    // Uniforms
+    void createUniformBuffers();
+    void createDescriptorPool();
+    void createDescriptorSets();
+    void updateUniformBuffer(uint32_t currentImage);
 
     // Commands and Queues
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
