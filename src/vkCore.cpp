@@ -27,8 +27,8 @@ const uint32_t HEIGHT = 600;
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
-const std::string MODEL_PATH = "models/viking_room.obj";
-const std::string TEXTURE_PATH = "textures/viking_room.png";
+const std::string MODEL_PATH = "../models/viking_room.obj";
+const std::string TEXTURE_PATH = "../textures/viking_room.png";
 
 uint32_t currentFrame = 0;
 
@@ -457,8 +457,8 @@ void VkCore::createDescriptorSetLayout()
 
 void VkCore::createGraphicsPipeline()
 {
-    auto vertShaderCode = readFile("vert.spv");
-    auto fragShaderCode = readFile("frag.spv");
+    auto vertShaderCode = readFile("../shaders/shader.vert.spv");
+    auto fragShaderCode = readFile("../shaders/shader.frag.spv");
 
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
     VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
