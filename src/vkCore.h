@@ -48,12 +48,44 @@ struct Vertex {
     }
 };
 
+struct Particle {
+    glm::vec2 position;
+    glm::vec2 velocity;
+    glm::vec4 color;
+
+    static VkVertexInputBindingDescription getBindingDescription() {
+        VkVertexInputBindingDescription bindingDescription{};
+        bindingDescription.binding = 0;
+        bindingDescription.stride = sizeof(Particle);
+        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+        return bindingDescription;
+    }
+
+    static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
+        std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+
+        attributeDescriptions[0].binding = 0;
+        attributeDescriptions[0].location = 0;
+        attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+        attributeDescriptions[0].offset = offsetof(Particle, position);
+
+        attributeDescriptions[1].binding = 0;
+        attributeDescriptions[1].location = 1;
+        attributeDescriptions[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+        attributeDescriptions[1].offset = offsetof(Particle, color);
+
+        return attributeDescriptions;
+    }
+};
+
 struct QueueFamilyIndices {
-    std::optional<uint32_t> graphicsFamily;
+    // std::optional<uint32_t> graphicsFamily;
     std::optional<uint32_t> presentFamily;
+    std::optional<uint32_t> graphicsAndComputeFamily;
 
     bool isComplete() {
-        return graphicsFamily.has_value() && presentFamily.has_value();
+        return graphicsAndComputeFamily.has_value() && presentFamily.has_value();
     }
 };
 
@@ -83,6 +115,7 @@ private:
     std::vector<VkImageView> swapChainImageViews;
     std::vector<VkFramebuffer> swapChainFramebuffers;
 
+    // Graphics Pipeline
     VkRenderPass renderPass;
     VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
@@ -115,23 +148,36 @@ private:
     std::vector<VkBuffer> uniformBuffers;
     std::vector<VkDeviceMemory> uniformBuffersMemory;
     std::vector<void*> uniformBuffersMapped;
-
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
+
+    // Compute Pipeline
+    std::vector<VkBuffer> shaderStorageBuffers;
+    std::vector<VkDeviceMemory> shaderStorageBuffersMemory;
+    VkDescriptorSetLayout computeDescriptorSetLayout;
+    std::vector<VkDescriptorSet> computeDescriptorSets;
+    VkDescriptorPool computeDescriptorPool;
+    VkPipeline computePipeline;
+    VkPipelineLayout computePipelineLayout;
 
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkDevice device; // Logical Device
 
     VkQueue graphicsQueue;
+    VkQueue computeQueue;
     VkQueue presentQueue;
 
     VkCommandPool commandPool;
     std::vector<VkCommandBuffer> commandBuffers;
+    std::vector<VkCommandBuffer> computeCommandBuffers;
 
     // Synchronization
     std::vector <VkSemaphore> imageAvailableSemaphores;
     std::vector <VkSemaphore> renderFinishedSemaphores;
+    std::vector <VkSemaphore> computeFinishedSemaphores;
+
     std::vector <VkFence> inFlightFences;
+    std::vector <VkFence> computeInFlightFences;
 
     bool framebufferResized = false;
 
@@ -139,6 +185,7 @@ private:
     void initVulkan();
     void mainLoop();
     void drawFrame();
+    void drawComputeFrame();
     void cleanup();
 
     // VkInstance, Extensions and Validation Layers
@@ -181,8 +228,10 @@ private:
 
     // Commands and Queues
     void createCommandPool();
-    void createCommandBuffer();
+    void createCommandBuffers();
+    void createComputeCommandBuffers();
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+    void recordComputeCommandBuffer(VkCommandBuffer commandBuffer);
     VkCommandBuffer beginSingleTimeCommands();
     void endSingleTimeCommands(VkCommandBuffer commandBuffer);
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
@@ -199,6 +248,13 @@ private:
     void createDescriptorPool();
     void createDescriptorSets();
     void updateUniformBuffer(uint32_t currentImage);
+
+    // Compute Pipeline
+    void createShaderStorageBuffers();
+    void createComputeDescriptorSetLayout();
+    void createComputePipeline();
+    void createComputeDescriptorSets();
+    void createComputeDescriptorPool();
 
     // Texture mapping
     void createTextureImage();
