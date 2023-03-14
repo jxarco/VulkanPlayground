@@ -118,7 +118,7 @@ private:
     // Graphics Pipeline
     VkRenderPass renderPass;
     VkDescriptorSetLayout descriptorSetLayout;
-    VkPipelineLayout pipelineLayout;
+    VkPipelineLayout graphicsPipelineLayout;
     VkPipeline graphicsPipeline;
 
     uint32_t mipLevels;
@@ -175,7 +175,6 @@ private:
     std::vector <VkSemaphore> imageAvailableSemaphores;
     std::vector <VkSemaphore> renderFinishedSemaphores;
     std::vector <VkSemaphore> computeFinishedSemaphores;
-
     std::vector <VkFence> inFlightFences;
     std::vector <VkFence> computeInFlightFences;
 
@@ -185,7 +184,6 @@ private:
     void initVulkan();
     void mainLoop();
     void drawFrame();
-    void drawComputeFrame();
     void cleanup();
 
     // VkInstance, Extensions and Validation Layers

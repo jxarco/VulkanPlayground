@@ -94,13 +94,13 @@ const std::vector<uint16_t> _indices = {
     4, 5, 6, 6, 7, 4
 };
 
-struct UniformBufferObject {
-    glm::mat4 model;
-    glm::mat4 view;
-    glm::mat4 proj;
-};
+//struct UniformBufferObject {
+//    glm::mat4 model;
+//    glm::mat4 view;
+//    glm::mat4 proj;
+//};
 
-struct ComputeUniformBufferObject {
+struct UniformBufferObject {
     float deltaTime = 1.f;
 };
 
@@ -139,96 +139,36 @@ void VkCore::mainLoop()
 
 void VkCore::drawFrame()
 {
-    // Wait for the previous frame to finish
-    vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
-
-    // Acquire an image from the swap chain
-    uint32_t imageIndex;
-    VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
-
-    // Incompatible: E.g. window resize
-    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-        recreateSwapChain();
-        return;
-    }
-    // Present to the surface OK, but surface properties no longer matched
-    else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-        throw std::runtime_error("Failed to acquire swap chain image!");
-    }
-
-    // Only reset the fence if we are submitting work
-    vkResetFences(device, 1, &inFlightFences[currentFrame]);
-
+    /*
+        Compute submission
+    */
+    
     updateUniformBuffer(currentFrame);
 
-    // Record a command buffer which draws the scene onto that image
-    vkResetCommandBuffer(commandBuffers[currentFrame], 0);
-    recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
-
-    // Submit the recorded command buffer
-    VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
-    VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-    VkSubmitInfo submitInfo{};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = waitSemaphores;
-    submitInfo.pWaitDstStageMask = waitStages;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBuffers[currentFrame];
-
-    VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
-    submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = signalSemaphores;
-
-    if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to submit draw command buffer!");
-    }
-
-    // Present the swap chain image
-    VkPresentInfoKHR presentInfo{};
-    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
-    presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = signalSemaphores;
-
-    VkSwapchainKHR swapChains[] = { swapChain };
-    presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = swapChains;
-    presentInfo.pImageIndices = &imageIndex;
-    presentInfo.pResults = nullptr; // Optional: check for every individual swap chain if presentation was successful
-
-    result = vkQueuePresentKHR(presentQueue, &presentInfo);
-
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
-        framebufferResized = false;
-        recreateSwapChain();
-    }
-    else if (result != VK_SUCCESS) {
-        throw std::runtime_error("Failed to present swap chain image!");
-    }
-
-    currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
-}
-
-void VkCore::drawComputeFrame()
-{
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
     // Wait for compute to end
     vkWaitForFences(device, 1, &computeInFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
-    updateUniformBuffer(currentFrame);
-
     // Always reset fences for compute (while no early exit)
     vkResetFences(device, 1, &computeInFlightFences[currentFrame]);
 
-    vkResetCommandBuffer(commandBuffers[currentFrame], 0);
-    recordComputeCommandBuffer(commandBuffers[currentFrame]);
+    vkResetCommandBuffer(computeCommandBuffers[currentFrame], 0);
+    recordComputeCommandBuffer(computeCommandBuffers[currentFrame]);
 
-    if (vkQueueSubmit(computeQueue, 1, &submitInfo, nullptr) != VK_SUCCESS) {
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &computeCommandBuffers[currentFrame];
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &computeFinishedSemaphores[currentFrame];
+
+    if (vkQueueSubmit(computeQueue, 1, &submitInfo, computeInFlightFences[currentFrame]) != VK_SUCCESS) {
         throw std::runtime_error("Failed to submit draw command buffer!");
     }
+    
+    /*
+        Graphics submission
+    */
 
     // Wait for the previous frame to finish
     vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
@@ -250,18 +190,16 @@ void VkCore::drawComputeFrame()
     // Only reset the fence if we are submitting work
     vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
-    updateUniformBuffer(currentFrame);
-
     // Record a command buffer which draws the scene onto that image
     vkResetCommandBuffer(commandBuffers[currentFrame], 0);
     recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
 
     // Submit the recorded command buffer
-    VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
-    VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-    VkSubmitInfo submitInfo{};
+    VkSemaphore waitSemaphores[] = { computeFinishedSemaphores[currentFrame], imageAvailableSemaphores[currentFrame] };
+    VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+    submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.waitSemaphoreCount = 2;
     submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.pWaitDstStageMask = waitStages;
     submitInfo.commandBufferCount = 1;
@@ -351,13 +289,13 @@ void VkCore::initVulkan()
 
     createUniformBuffers();
 
-    createComputeDescriptorPool();
-
-    createComputeDescriptorSets();
-
     createDescriptorPool();
 
     createDescriptorSets();
+
+    createComputeDescriptorPool();
+
+    createComputeDescriptorSets();
 
     createCommandBuffers();
 
@@ -424,14 +362,16 @@ void VkCore::cleanup()
     vkDestroyPipeline(device, graphicsPipeline, nullptr);
 
     vkDestroyPipelineLayout(device, computePipelineLayout, nullptr);
-    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+    vkDestroyPipelineLayout(device, graphicsPipelineLayout, nullptr);
 
     vkDestroyRenderPass(device, renderPass, nullptr);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
         vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
+        vkDestroySemaphore(device, computeFinishedSemaphores[i], nullptr);
         vkDestroyFence(device, inFlightFences[i], nullptr);
+        vkDestroyFence(device, computeInFlightFences[i], nullptr);
     }
 
     vkDestroyCommandPool(device, commandPool, nullptr);
@@ -597,8 +537,8 @@ void VkCore::createDescriptorSetLayout()
 
 void VkCore::createGraphicsPipeline()
 {
-    auto vertShaderCode     = readFile("../shaders/shader.vert.spv");
-    auto fragShaderCode     = readFile("../shaders/shader.frag.spv");
+    auto vertShaderCode     = readFile("../shaders/particles.vert.spv");
+    auto fragShaderCode     = readFile("../shaders/particles.frag.spv");
 
     VkShaderModule vertShaderModule     = createShaderModule(vertShaderCode);
     VkShaderModule fragShaderModule     = createShaderModule(fragShaderCode);
@@ -621,8 +561,8 @@ void VkCore::createGraphicsPipeline()
 
     // Format of the vertex data that will be passed to the vertex shader
 
-    auto bindingDescription = Vertex::getBindingDescription();
-    auto attributeDescriptions = Vertex::getAttributeDescriptions();
+    auto bindingDescription = Particle::getBindingDescription();
+    auto attributeDescriptions = Particle::getAttributeDescriptions();
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -707,7 +647,7 @@ void VkCore::createGraphicsPipeline()
     pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
     pipelineLayoutInfo.pushConstantRangeCount = 0;
 
-    if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+    if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &graphicsPipelineLayout) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create pipeline layout!");
     }
 
@@ -723,7 +663,7 @@ void VkCore::createGraphicsPipeline()
     pipelineInfo.pDepthStencilState = nullptr; // Optional
     pipelineInfo.pColorBlendState = &colorBlending;
     pipelineInfo.pDynamicState = &dynamicState;
-    pipelineInfo.layout = pipelineLayout;
+    pipelineInfo.layout = graphicsPipelineLayout;
     pipelineInfo.renderPass = renderPass;
     pipelineInfo.subpass = 0;
 
@@ -1335,18 +1275,15 @@ void VkCore::updateUniformBuffer(uint32_t currentImage)
     auto currentTime = std::chrono::high_resolution_clock::now();
     float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-    /*
+    //UniformBufferObject ubo{};
+    //ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    //ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    //ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
+    //ubo.proj[1][1] *= -1; // because of GLM designed for OpenGL 
+    
     UniformBufferObject ubo{};
-    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
-    ubo.proj[1][1] *= -1; // because of GLM designed for OpenGL 
-
-    memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
-    */
-
-    ComputeUniformBufferObject ubo{};
     ubo.deltaTime = time * 2.0f;
+
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
 
@@ -1549,10 +1486,12 @@ void VkCore::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIn
 
     VkBuffer vertexBuffers[] = { vertexBuffer };
     VkDeviceSize offsets[] = { 0 };
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+    // vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+
+    
 
     // VK_INDEX_TYPE_UINT16 or VK_INDEX_TYPE_UINT32
-    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32); // 0 is the byte offset
+    // vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32); // 0 is the byte offset
 
     // Set dynamic states
     VkViewport viewport{};
@@ -1569,7 +1508,7 @@ void VkCore::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIn
     scissor.extent = swapChainExtent;
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
     // Not indexed
     /*vkCmdDraw(commandBuffer,
@@ -1579,13 +1518,18 @@ void VkCore::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIn
         0); // firstInstance
     */
 
-    vkCmdDrawIndexed(commandBuffer, 
-        static_cast<uint32_t>(indices.size()), // indicesCount
+    // Render particles ***********
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, &shaderStorageBuffers[currentFrame], offsets);
+    vkCmdDraw(commandBuffer, PARTICLE_COUNT, 1, 0, 0);
+    // *****************************
+
+    /*vkCmdDrawIndexed(commandBuffer,
+        static_cast<uint32_t>(indices.size()), // indexCount
         1, // instanceCount
         0, // firstIndex
         0, 
         0);// firstInstance
-
+    */
     vkCmdEndRenderPass(commandBuffer);
 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
@@ -2158,7 +2102,7 @@ void VkCore::createComputeDescriptorPool()
 
 void VkCore::createComputePipeline()
 {
-    auto computeShaderCode = readFile("../shaders/shader.comp.spv");
+    auto computeShaderCode = readFile("../shaders/particles.comp.spv");
 
     VkShaderModule computeShaderModule = createShaderModule(computeShaderCode);
 
