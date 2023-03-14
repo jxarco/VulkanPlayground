@@ -117,7 +117,7 @@ private:
 
     // Graphics Pipeline
     VkRenderPass renderPass;
-    VkDescriptorSetLayout descriptorSetLayout;
+    //VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout graphicsPipelineLayout;
     VkPipeline graphicsPipeline;
 
