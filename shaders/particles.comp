@@ -1,12 +1,18 @@
 #version 450
 
 layout (binding = 0) uniform ParameterUBO {
+    mat4 model;
+    mat4 view;
+    mat4 proj;
     float deltaTime;
+    vec3 foo;
 } ubo;
 
 struct Particle {
-    vec2 position;
-    vec2 velocity;
+    vec3 position;
+    float foo;
+    vec3 velocity;
+    float foo2;
     vec4 color;
 };
 
@@ -26,15 +32,17 @@ void main()
 
     Particle particleIn = particlesIn[index];
 
-    particlesOut[index].position = particleIn.position + particleIn.velocity.xy * ubo.deltaTime;
+    particlesOut[index].position = particleIn.position + particleIn.velocity * ubo.deltaTime;
     particlesOut[index].velocity = particleIn.velocity;
     
     // Flip movement at window border
     if ((particlesOut[index].position.x <= -1.0) || (particlesOut[index].position.x >= 1.0)) {
-        particlesOut[index].velocity.x = -particlesOut[index].velocity.x;
+        particlesOut[index].velocity.x = -particlesOut[index].velocity.x * 0.5;
     }
     if ((particlesOut[index].position.y <= -1.0) || (particlesOut[index].position.y >= 1.0)) {
-        particlesOut[index].velocity.y = -particlesOut[index].velocity.y;
+        particlesOut[index].velocity.y = -particlesOut[index].velocity.y * 0.5;
     }
-
+    if ((particlesOut[index].position.z <= -1.0) || (particlesOut[index].position.z >= 1.0)) {
+        particlesOut[index].velocity.z = -particlesOut[index].velocity.z * 0.5;
+    }
 }

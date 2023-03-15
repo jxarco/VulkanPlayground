@@ -49,8 +49,10 @@ struct Vertex {
 };
 
 struct Particle {
-    glm::vec2 position;
-    glm::vec2 velocity;
+    glm::vec3 position;
+    float foo;
+    glm::vec3 velocity;
+    float foo2;
     glm::vec4 color;
 
     static VkVertexInputBindingDescription getBindingDescription() {
@@ -67,7 +69,7 @@ struct Particle {
 
         attributeDescriptions[0].binding = 0;
         attributeDescriptions[0].location = 0;
-        attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+        attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
         attributeDescriptions[0].offset = offsetof(Particle, position);
 
         attributeDescriptions[1].binding = 0;
@@ -117,7 +119,7 @@ private:
 
     // Graphics Pipeline
     VkRenderPass renderPass;
-    //VkDescriptorSetLayout descriptorSetLayout;
+    VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout graphicsPipelineLayout;
     VkPipeline graphicsPipeline;
 
@@ -216,7 +218,7 @@ private:
     // Graphics Pipeline
     void createRenderPass();
     void createDescriptorSetLayout();
-    void createGraphicsPipeline();
+    void createGraphicsPipeline(const char* vs, const char* fs, VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
     VkShaderModule createShaderModule(const std::vector<char>& code);
 
     // Physical and Logical Devices
